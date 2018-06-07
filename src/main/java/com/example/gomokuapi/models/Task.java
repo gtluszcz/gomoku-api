@@ -11,10 +11,11 @@ public class Task implements Callable<Long>{
 
     private Cell[][] board;
     private ArrayList<Cell> occupied;
+    private ArrayList<Cell> movesToDo;
     private Cell cellToAdd;
     private Integer level;
 
-    Task(Cell[][] board, ArrayList<Cell> occupied,Cell cellToAdd,Integer level){
+    Task(Cell[][] board, ArrayList<Cell> occupied,Cell cellToAdd,Integer level,ArrayList<Cell> moves){
         this.board = new Cell[board.length][board[0].length];
         for (int i=0;i<board.length;i++){
             for (int j = 0; j < board[0].length; j++) {
@@ -27,6 +28,9 @@ public class Task implements Callable<Long>{
 
         this.occupied = new ArrayList<>(occupied.size());
         occupied.forEach(cell -> this.occupied.add(this.board[cell.x][cell.y]));
+
+        this.movesToDo = new ArrayList<>(occupied.size());
+        occupied.forEach(cell -> this.movesToDo.add(this.board[cell.x][cell.y]));
 
     }
 
@@ -162,40 +166,79 @@ public class Task implements Callable<Long>{
         return step;
     }
 
+    private Cell maxByScore(HashMap<Cell,Future<Long>> map) throws ExecutionException, InterruptedException {
+        Long score = Long.MIN_VALUE;
+        Cell finalcell = new Cell(99,99,1);
+        for(Map.Entry<Cell, Future<Long>> entry : map.entrySet()){
+            if (score <= entry.getValue().get()){
+                score = entry.getValue().get();
+                finalcell = entry.getKey();
+            }
+        }
+        return finalcell;
+    }
+
 
     @Override
     public Long call() throws ExecutionException, InterruptedException {
-        if (level == 4) {
-            if (level % 2 == 1)
-                this.setCell(this.cellToAdd,1);
-            else
-                this.setCell(this.cellToAdd,0);
-            Long num = this.heuristic();
-            this.removeCell(this.cellToAdd);
-            return num;
-        }
+        return this.minMax(this.cellToAdd,this.level);
 
-
-
-        if (level % 2 == 1)
-            this.setCell(this.cellToAdd,1);
-        else
-            this.setCell(this.cellToAdd,0);
-        ArrayList<Cell> moves = this.getAllMoves();
-
-        ExecutorService service = Executors.newFixedThreadPool(1);
-        List<Future<Long>> choices = new ArrayList<>();
-        for (Cell cell2 : moves) {
-            choices.add(service.submit(new Task(this.board,this.occupied,cell2,level+1)));
+        HashMap<Cell,Future<Long>> choices = new HashMap<>();
+        for (Cell cell : movesToDo) {
+            choices.put(cell,service.submit(new Task(this.board,this.occupied,cell,1)));
         }
 
         service.shutdown();
-        ArrayList<Long> result = new ArrayList<>();
-        for (Future<Long> res : choices){
-            result.add(res.get());
+
+        try {
+            return maxByScore(choices);
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        return new Cell(0,0,0);
+    }
+
+    private Long minMax(Cell cell, Integer level) throws ExecutionException, InterruptedException {
+        if (level == 4) {
+            if (level % 2 == 1)
+                this.setCell(cell,1);
+            else
+                this.setCell(cell,0);
+            Long num = this.heuristic();
+            this.removeCell(cell);
+            return num;
         }
 
-        this.removeCell(this.cellToAdd);
+        if (level % 2 == 1)
+            this.setCell(cell,1);
+        else
+            this.setCell(cell,0);
+        ArrayList<Cell> moves = this.getAllMoves();
+
+        ArrayList<Long> result = new ArrayList<>();
+        if(false){
+            ExecutorService service = Executors.newFixedThreadPool(2);
+            List<Future<Long>> choices = new ArrayList<>();
+            for (Cell cell2 : moves) {
+                choices.add(service.submit(new Task(this.board,this.occupied,cell2,level+1)));
+            }
+
+            service.shutdown();
+            for (Future<Long> res : choices){
+                result.add(res.get());
+            }
+        }else {
+
+            for (Cell cell2 : moves) {
+                result.add(this.minMax(cell2, level + 1));
+            }
+        }
+
+
+        this.removeCell(cell);
+
         return (level % 2 == 0) ? Collections.max(result) : Collections.min(result);
     }
 

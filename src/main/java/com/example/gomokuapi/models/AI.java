@@ -34,7 +34,7 @@ class AI {
 
     Cell computeMove(){
         ArrayList<Cell> moves = this.getAllMoves();
-        ExecutorService service = Executors.newFixedThreadPool(moves.size());
+        ForkJoinPool service = new ForkJoinPool(4);
 
         HashMap<Cell,Future<Long>> choices = new HashMap<>();
         for (Cell cell : moves) {
