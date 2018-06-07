@@ -24,7 +24,6 @@ public class Logic {
 
         this.board[x][y].setValue(value);
         occupied.add(this.board[x][y]);
-        this.occupied.forEach(cell -> System.out.print(cell.toString()+" "));
         return true;
     }
 
