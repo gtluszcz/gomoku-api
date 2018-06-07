@@ -7,15 +7,14 @@ import java.util.concurrent.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class Task implements Callable<Long>{
+public class Task implements Callable<Pair<Cell,Long>>{
 
     private Cell[][] board;
     private ArrayList<Cell> occupied;
-    private ArrayList<Cell> movesToDo;
-    private Cell cellToAdd;
+    private List<Cell> movesToDo;
     private Integer level;
 
-    Task(Cell[][] board, ArrayList<Cell> occupied,Cell cellToAdd,Integer level,ArrayList<Cell> moves){
+    Task(Cell[][] board, ArrayList<Cell> occupied,Integer level,List<Cell> moves){
         this.board = new Cell[board.length][board[0].length];
         for (int i=0;i<board.length;i++){
             for (int j = 0; j < board[0].length; j++) {
@@ -23,14 +22,13 @@ public class Task implements Callable<Long>{
             }
         }
 
-        this.cellToAdd = cellToAdd;
         this.level = level;
 
         this.occupied = new ArrayList<>(occupied.size());
         occupied.forEach(cell -> this.occupied.add(this.board[cell.x][cell.y]));
 
-        this.movesToDo = new ArrayList<>(occupied.size());
-        occupied.forEach(cell -> this.movesToDo.add(this.board[cell.x][cell.y]));
+        this.movesToDo = new ArrayList<>(moves.size());
+        moves.forEach(cell -> this.movesToDo.add(this.board[cell.x][cell.y]));
 
     }
 
@@ -166,38 +164,51 @@ public class Task implements Callable<Long>{
         return step;
     }
 
-    private Cell maxByScore(HashMap<Cell,Future<Long>> map) throws ExecutionException, InterruptedException {
+
+    private Pair<Cell,Long> maxByScore(ArrayList<Pair<Cell,Long>> map) throws ExecutionException, InterruptedException {
         Long score = Long.MIN_VALUE;
-        Cell finalcell = new Cell(99,99,1);
-        for(Map.Entry<Cell, Future<Long>> entry : map.entrySet()){
-            if (score <= entry.getValue().get()){
-                score = entry.getValue().get();
-                finalcell = entry.getKey();
+        Pair<Cell,Long> finalcell = new Pair<>(new Cell(99,99,1),score);
+        for(Pair<Cell,Long> entry : map){
+            if (score <= entry.getValue()){
+                score = entry.getValue();
+                finalcell = entry;
+            }
+        }
+        return finalcell;
+    }
+    private Pair<Cell,Long> minByScore(ArrayList<Pair<Cell,Long>> map) throws ExecutionException, InterruptedException {
+        Long score = Long.MAX_VALUE;
+        Pair<Cell,Long> finalcell = new Pair<>(new Cell(99,99,1),score);
+        for(Pair<Cell,Long> entry : map){
+            if (score >= entry.getValue()){
+                score = entry.getValue();
+                finalcell = entry;
             }
         }
         return finalcell;
     }
 
+    static <T> List<List<T>> chopped(List<T> list, final int L) {
+        List<List<T>> parts = new ArrayList<List<T>>();
+        final int N = list.size();
+        for (int i = 0; i < N; i += L) {
+            parts.add(new ArrayList<T>(
+                    list.subList(i, Math.min(N, i + L)))
+            );
+        }
+        return parts;
+    }
 
     @Override
-    public Long call() throws ExecutionException, InterruptedException {
-        return this.minMax(this.cellToAdd,this.level);
+    public Pair<Cell,Long> call() throws ExecutionException, InterruptedException {
 
-        HashMap<Cell,Future<Long>> choices = new HashMap<>();
+        ArrayList<Pair<Cell,Long>> choices = new ArrayList<>();
         for (Cell cell : movesToDo) {
-            choices.put(cell,service.submit(new Task(this.board,this.occupied,cell,1)));
+            choices.add(new Pair<>(cell,minMax(cell,this.level)));
         }
 
-        service.shutdown();
 
-        try {
-            return maxByScore(choices);
-        } catch (ExecutionException e) {
-            e.printStackTrace();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        return new Cell(0,0,0);
+        return (this.level % 2 == 0) ? maxByScore(choices) : minByScore(choices);
     }
 
     private Long minMax(Cell cell, Integer level) throws ExecutionException, InterruptedException {
@@ -215,27 +226,28 @@ public class Task implements Callable<Long>{
             this.setCell(cell,1);
         else
             this.setCell(cell,0);
+
         ArrayList<Cell> moves = this.getAllMoves();
-
         ArrayList<Long> result = new ArrayList<>();
-        if(false){
-            ExecutorService service = Executors.newFixedThreadPool(2);
-            List<Future<Long>> choices = new ArrayList<>();
-            for (Cell cell2 : moves) {
-                choices.add(service.submit(new Task(this.board,this.occupied,cell2,level+1)));
+
+        if (moves.size() > 40){
+            ArrayList<ForkJoinTask<Pair<Cell,Long>>> choices = new ArrayList<>();
+
+            for (List<Cell> list : chopped(moves,2)) {
+                ForkJoinTask<Pair<Cell,Long>> cos = ForkJoinTask.adapt(new Task(this.board,this.occupied,1,list));
+                choices.add(cos);
+                cos.fork();
             }
 
-            service.shutdown();
-            for (Future<Long> res : choices){
-                result.add(res.get());
-            }
-        }else {
-
-            for (Cell cell2 : moves) {
-                result.add(this.minMax(cell2, level + 1));
+            for (ForkJoinTask<Pair<Cell,Long>> tsk : choices){
+                result.add(tsk.join().getValue());
             }
         }
-
+        else {
+            for (Cell cell2 : moves){
+                result.add(minMax(cell2,level+1));
+            }
+        }
 
         this.removeCell(cell);
 
