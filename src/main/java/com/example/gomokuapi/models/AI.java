@@ -19,23 +19,16 @@ class AI {
 
         this.occupied = new ArrayList<>(occupied.size());
         occupied.forEach(cell -> this.occupied.add(this.board[cell.x][cell.y]));
-
-//        this.occupied.forEach(cell -> System.out.print(cell.toString()+ " "));
-//        System.out.println(" omg 2");
     }
 
     private void setCell(Cell cell, Integer type){
-//        if (type==null)
-//            System.out.println("lol");
         this.board[cell.x][cell.y].setValue(type);
         this.occupied.add(this.board[cell.x][cell.y]);
-//        System.out.println("dodaje "+this.board[cell.x][cell.y].value);
     }
 
     private void removeCell(Cell cell){
         this.board[cell.x][cell.y].setValue(null);
         this.occupied.removeIf(cell2 -> cell2.y.equals(cell.y) && cell2.x.equals(cell.x));
-//        System.out.println("odejmuje "+this.board[cell.x][cell.y].value);
     }
 
     Cell computeMove(){
@@ -43,18 +36,17 @@ class AI {
 
         HashMap<Cell,Long> choices = new HashMap<>();
         for (Cell cell : moves) {
-            choices.put(cell,this.minmax(cell,1));
+            choices.put(cell,this.minMax(cell,1));
         }
         return maxByScore(choices);
     }
 
-    private Long minmax(Cell cell, Integer level){
+    private Long minMax(Cell cell, Integer level){
         if (level == 4) {
             if (level % 2 == 1)
                 this.setCell(cell,1);
             else
                 this.setCell(cell,0);
-//            System.out.println("dół");
             Long num = this.heuristic();
             this.removeCell(cell);
             return num;
@@ -65,13 +57,11 @@ class AI {
         else
             this.setCell(cell,0);
         ArrayList<Cell> moves = this.getAllMoves();
-//        System.out.println("tutaj");
 
         ArrayList<Long> choices = new ArrayList<>();
         for (Cell cell2 : moves) {
-            choices.add(this.minmax(cell2, level + 1));
+            choices.add(this.minMax(cell2, level + 1));
         }
-//        System.out.println("wychodzę");
         this.removeCell(cell);
 
         return (level % 2 == 0) ? Collections.max(choices) : Collections.min(choices);
@@ -80,10 +70,6 @@ class AI {
     private Long heuristic(){
         long score = 0;
         HashMap<Cell,Cell> found_pairs = new HashMap<>();
-
-//        System.out.print("occupied ");
-//        occupied.forEach(cell -> System.out.print(cell.toString()+ " "));
-//        System.out.println(" ");
 
         for (Cell cell : this.occupied) {
             for (int x = 0; x < 2; x++) {
@@ -176,10 +162,6 @@ class AI {
 
     private ArrayList<Cell> getAllMoves() {
 
-//        System.out.print("getAllMoves occupied ");
-//        occupied.forEach(cell -> System.out.print(cell.toString()+ " "));
-//        System.out.println(" ");
-
         ArrayList<Cell> newmoves = new ArrayList<>();
         for (Cell cell : this.occupied) {
             for (int x = -1; x < 2; x++) {
@@ -202,7 +184,6 @@ class AI {
                 }
             }
         }
-//        System.out.println("getmoves: "+newmoves.size());
         return newmoves;
     }
 

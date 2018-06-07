@@ -13,7 +13,6 @@ public class Logic {
                 this.board[i][j] = new Cell(i,j,null);
             }
         }
-        System.out.println("Initial occupied size: "+occupied.size());
     }
 
     public Boolean setCell(Integer x, Integer y, Integer value){
@@ -26,15 +25,10 @@ public class Logic {
         this.board[x][y].setValue(value);
         occupied.add(this.board[x][y]);
         this.occupied.forEach(cell -> System.out.print(cell.toString()+" "));
-        System.out.println(" omg ");
-        System.out.println(" koncze  dodawac");
         return true;
     }
 
-    public Cell IntelligentMove(){
-            System.out.println(" odpalam move");
-            System.out.println(this.occupied);
-            System.out.println(" omg 1");
+    public Cell intelligentMove(){
             AI computer = new AI(this.board,this.occupied);
             return computer.computeMove();
     }

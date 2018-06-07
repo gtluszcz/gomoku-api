@@ -20,11 +20,11 @@ public class LogicController {
         //  gomoku/v1/logic/nextmove
         @CrossOrigin(origins = "http://localhost:8081")
         @RequestMapping(value = "/nextmove", method = RequestMethod.GET)
-        public ResponseEntity<?> IntelligentMove(){
+        public ResponseEntity<?> intelligentMove(){
             if (logicInstance == null){
                 return new ResponseEntity<>("Initialize new game first",HttpStatus.FORBIDDEN);
             }
-            return new ResponseEntity<>(logicInstance.IntelligentMove(),HttpStatus.OK);
+            return new ResponseEntity<>(logicInstance.intelligentMove(),HttpStatus.OK);
         }
 
 
@@ -39,7 +39,7 @@ public class LogicController {
         // gomoku/v1/logic/setcell/20/20/1
         @CrossOrigin(origins = "http://localhost:8081")
         @RequestMapping(value = "/setcell/{x}/{y}/{value}", method = RequestMethod.GET)
-            public ResponseEntity<String> newGame(
+            public ResponseEntity<String> setCell(
                     @PathVariable("x") Integer x,
                     @PathVariable("y") Integer y,
                     @PathVariable("value") Integer value
