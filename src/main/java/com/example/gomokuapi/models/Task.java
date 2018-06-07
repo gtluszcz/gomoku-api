@@ -15,6 +15,7 @@ public class Task implements Callable<Long>{
     private Integer level;
 
     Task(Cell[][] board, ArrayList<Cell> occupied,Cell cellToAdd,Integer level){
+        System.out.println("created");
         this.board = new Cell[board.length][board[0].length];
         for (int i=0;i<board.length;i++){
             for (int j = 0; j < board[0].length; j++) {
@@ -183,16 +184,18 @@ public class Task implements Callable<Long>{
             this.setCell(this.cellToAdd,0);
         ArrayList<Cell> moves = this.getAllMoves();
 
-        ExecutorService service = Executors.newFixedThreadPool(1);
-        List<Future<Long>> choices = new ArrayList<>();
+
+        ArrayList<Long> result = new ArrayList<>();
+        List<ForkJoinTask<Long>> subtasks = new ArrayList<>();
+
         for (Cell cell2 : moves) {
-            choices.add(service.submit(new Task(this.board,this.occupied,cell2,level+1)));
+            ForkJoinTask<Long> tsk = RecursiveTask.adapt(new Task(this.board,this.occupied,cell2,level+1));
+            subtasks.add(tsk);
+            tsk.fork();
         }
 
-        service.shutdown();
-        ArrayList<Long> result = new ArrayList<>();
-        for (Future<Long> res : choices){
-            result.add(res.get());
+        for(ForkJoinTask<Long> subtask : subtasks){
+            result.add(subtask.join());
         }
 
         this.removeCell(this.cellToAdd);
