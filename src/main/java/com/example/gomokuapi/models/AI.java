@@ -34,13 +34,16 @@ class AI {
 
     Cell computeMove(){
         ArrayList<Cell> moves = this.getAllMoves();
-        ForkJoinPool service = new ForkJoinPool(4);
+        ForkJoinPool service =ForkJoinPool.commonPool();
 
-        ArrayList<Pair<Cell,Long>> choices = new ArrayList<>();
-        for (List<Cell> list : chopped(moves,2)) {
-            choices.add(service.invoke(ForkJoinTask.adapt(new Task(this.board,this.occupied,1,list))));
+        List<Future<Pair<Cell,Long>>> choices = new ArrayList<>();
+        List<Callable<Pair<Cell,Long>>> lista = new ArrayList<>();
+        for (List<Cell> list : chopped(moves,1)) {
+            System.out.println(list);
+            lista.add(new Task(this.board,this.occupied,1,list));
         }
 
+        choices = service.invokeAll(lista);
 
         try {
             return maxByScore(choices);
@@ -90,13 +93,13 @@ class AI {
         return parts;
     }
 
-    private Cell maxByScore(ArrayList<Pair<Cell,Long>> map) throws ExecutionException, InterruptedException {
+    private Cell maxByScore(List<Future<Pair<Cell,Long>>> map) throws ExecutionException, InterruptedException {
         Long score = Long.MIN_VALUE;
         Cell finalcell = new Cell(99,99,1);
-        for(Pair<Cell,Long> entry : map){
-            if (score <= entry.getValue()){
-                score = entry.getValue();
-                finalcell = entry.getKey();
+        for(Future<Pair<Cell,Long>> entry : map){
+            if (score <= entry.get().getValue()){
+                score = entry.get().getValue();
+                finalcell = entry.get().getKey();
             }
         }
         return finalcell;

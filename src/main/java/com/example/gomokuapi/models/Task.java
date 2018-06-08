@@ -208,7 +208,7 @@ public class Task implements Callable<Pair<Cell,Long>>{
         }
 
 
-        return (this.level % 2 == 0) ? maxByScore(choices) : minByScore(choices);
+        return (this.level % 2 == 0) ? minByScore(choices) : maxByScore(choices);
     }
 
     private Long minMax(Cell cell, Integer level) throws ExecutionException, InterruptedException {
@@ -230,28 +230,56 @@ public class Task implements Callable<Pair<Cell,Long>>{
         ArrayList<Cell> moves = this.getAllMoves();
         ArrayList<Long> result = new ArrayList<>();
 
-        if (moves.size() > 40){
-            ArrayList<ForkJoinTask<Pair<Cell,Long>>> choices = new ArrayList<>();
+        if (false){
 
-            for (List<Cell> list : chopped(moves,2)) {
-                ForkJoinTask<Pair<Cell,Long>> cos = ForkJoinTask.adapt(new Task(this.board,this.occupied,1,list));
-                choices.add(cos);
-                cos.fork();
-            }
 
-            for (ForkJoinTask<Pair<Cell,Long>> tsk : choices){
-                result.add(tsk.join().getValue());
+            List<Future<Pair<Cell,Long>>> choices = new ArrayList<>();
+            List<Callable<Pair<Cell,Long>>> lista = new ArrayList<>();
+            for (List<Cell> list : chopped(moves,20)) {
+                lista.add(new Task(this.board,this.occupied,1,list));
             }
+            choices = ForkJoinPool.commonPool().invokeAll(lista);
+            this.removeCell(cell);
+
+            try {
+                return (level % 2 == 0) ? maxByScore2(choices) : minByScore2(choices);
+            } catch (ExecutionException e) {
+                e.printStackTrace();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            return new Long(0);
+
         }
         else {
             for (Cell cell2 : moves){
                 result.add(minMax(cell2,level+1));
             }
+
+            this.removeCell(cell);
+
+            return (level % 2 == 0) ? Collections.max(result) : Collections.min(result);
         }
+    }
 
-        this.removeCell(cell);
+    private Long maxByScore2(List<Future<Pair<Cell,Long>>> map) throws ExecutionException, InterruptedException {
+        Long score = Long.MIN_VALUE;
+        for(Future<Pair<Cell,Long>> entry : map){
+            if (score <= entry.get().getValue()){
+                score = entry.get().getValue();
+            }
+        }
+        return score;
+    }
 
-        return (level % 2 == 0) ? Collections.max(result) : Collections.min(result);
+    private Long minByScore2(List<Future<Pair<Cell,Long>>> map) throws ExecutionException, InterruptedException {
+        Long score = Long.MAX_VALUE;
+        for(Future<Pair<Cell,Long>> entry : map){
+            if (score >= entry.get().getValue()){
+                score = entry.get().getValue();
+            }
+        }
+        return score;
     }
 
 }
